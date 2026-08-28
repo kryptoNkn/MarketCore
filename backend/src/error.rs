@@ -1,16 +1,22 @@
-// Application error — как правильно организовать ошибки.
+use std::io;
 
 use crate::config::ConfigError;
 
 #[derive(Debug)]
 pub enum AppError {
     Config(ConfigError),
+    InvalidServerAddress,
+    ServerBind(io::Error),
+    Server(io::Error),
 }
 
-impl sdt::fmt::Display for AppError {
+impl std::fmt::Display for AppError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Config(error) => write!(f, "configuration error: {error}"),
+            Self::InvalidServerAddress => write!(f, "invalid server address"),
+            Self::ServerBind(error) => write!(f, "failed to bind server: {error}"),
+            Self::Server(error) => write!(f, "server error: {error}"),
         }
     }
 }
