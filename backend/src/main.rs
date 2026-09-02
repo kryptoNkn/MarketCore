@@ -1,12 +1,16 @@
 mod app;
 mod config;
+mod db;
 mod error;
+mod state;
 
 use std::net::SocketAddr;
 
 use app::create_router;
 use config::Config;
+use db::create_pool;
 use error::AppError;
+use state::AppState;
 use tokio::net::TcpListener;
 use tracing::info;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
@@ -24,7 +28,12 @@ async fn main() -> Result<(), AppError> {
         .parse()
         .map_err(|_| AppError::InvalidServerAddress)?;
 
-    let app = create_router();
+    let db = create_pool(&config.database_url)
+        .await
+        .map_err(AppError::Database)?;
+
+    let state = AppState { db };
+    let app = create_router(state);
 
     let listener = TcpListener::bind(address)
         .await
@@ -32,7 +41,9 @@ async fn main() -> Result<(), AppError> {
 
     info!("MarketCore server listening on {}", address);
 
-    axum::serve(listener, app).await.map_err(AppError::Server)?;
+    axum::serve(listener, app)
+        .await
+        .map_err(AppError::Server)?;
 
     Ok(())
 }
