@@ -8,8 +8,9 @@ use std::net::SocketAddr;
 
 use app::create_router;
 use config::Config;
-use db::create_pool;
+use db::{check_connection ,create_pool};
 use error::AppError;
+use sqlx::postgres::PgSeverity::Error;
 use state::AppState;
 use tokio::net::TcpListener;
 use tracing::info;
@@ -31,6 +32,11 @@ async fn main() -> Result<(), AppError> {
     let db = create_pool(&config.database_url)
         .await
         .map_err(AppError::Database)?;
+
+    check_connection(&db)
+        .await
+        .map_err(AppError::Database)?;
+    info!("Database connection established");
 
     let state = AppState { db };
     let app = create_router(state);
