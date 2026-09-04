@@ -2,6 +2,10 @@ mod app;
 mod db;
 mod error;
 mod state;
+mod handlers;
+mod models;
+mod repositories;
+mod services;
 
 use std::net::SocketAddr;
 
