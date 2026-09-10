@@ -1,3 +1,3 @@
 pub mod config;
 
-pub use config::{ConfigError, DatabaseConfig, ServerConfig};
+pub use config::{AuthConfig, ConfigError, DatabaseConfig, ServerConfig};

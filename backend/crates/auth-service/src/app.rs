@@ -1,12 +1,18 @@
-use axum::{Json, Router, routing::get};
+use axum::{
+    Json, Router,
+    routing::{get, post},
+};
 use serde::Serialize;
 
+use crate::handlers;
 use crate::state::AppState;
 
 pub fn create_router(state: AppState) -> Router {
     Router::new()
         .route("/health/live", get(liveness))
         .route("/health/ready", get(readiness))
+        .route("/v1/auth/register", post(handlers::register))
+        .route("/v1/auth/login", post(handlers::login))
         .with_state(state)
 }
 
@@ -24,7 +30,7 @@ async fn liveness() -> Json<HealthResponse> {
 }
 
 async fn readiness(
-    axum::extract::State(AppState { db }): axum::extract::State<AppState>,
+    axum::extract::State(AppState { db, .. }): axum::extract::State<AppState>,
 ) -> Result<Json<HealthResponse>, (axum::http::StatusCode, &'static str)> {
     sqlx::query("SELECT 1").execute(&db).await.map_err(|_| {
         (

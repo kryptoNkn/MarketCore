@@ -1,16 +1,20 @@
-services:                           # Раздел для описания запускаемых программ (сервисов)
-  postgres:                         # Имя сервиса (базы данных)
-    image: postgres:17              # Готовый шаблон: берем официальный PostgreSQL версии 17
-    container_name: marketcore-postgres  # Понятное имя контейнера в списке Docker
-    restart: unless-stopped         # Авто-перезапуск при сбоях или перезагрузке ПК
-    environment:                    # Настройки (переменные), передаваемые внутрь контейнера
-      POSTGRES_USER: marketcore     # Логин администратора базы данных
-      POSTGRES_PASSWORD: marketcore # Пароль администратора базы данных
-      POSTGRES_DB: marketcore       # Имя создаваемой по умолчанию базы данных
-    ports:                          # Настройка доступа к базе снаружи
-      - "5432:5432"                 # Проброс: ПК (5432) -> Контейнер (5432)
-    volumes:                        # Подключение внешнего диска для сохранения данных
-      - postgres_data:/var/lib/postgresql/data # Папка на ПК -> Папка с файлами БД в контейнере
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-marketcore}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-marketcore}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
-volumes:                            # Раздел объявления внешних дисков (томов)
-  postgres_data:                    # Регистрация диска postgres_data, чтобы данные не стерлись
+volumes:
+  postgres_data:
