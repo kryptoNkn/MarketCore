@@ -44,6 +44,7 @@ impl DatabaseConfig {
 pub struct AuthConfig {
     pub jwt_secret: String,
     pub jwt_ttl_seconds: u64,
+    pub refresh_ttl_seconds: u64,
 }
 
 impl AuthConfig {
@@ -54,13 +55,23 @@ impl AuthConfig {
         }
 
         let jwt_ttl_seconds = env::var("JWT_TTL_SECONDS")
-            .unwrap_or_else(|_| "3600".to_owned())
+            .unwrap_or_else(|_| "900".to_owned())
             .parse()
             .map_err(|_| ConfigError::InvalidJwtTtl)?;
+
+        let refresh_ttl_seconds = env::var("REFRESH_TTL_SECONDS")
+            .unwrap_or_else(|_| "604800".to_owned())
+            .parse()
+            .map_err(|_| ConfigError::InvalidRefreshTtl)?;
+
+        if refresh_ttl_seconds <= jwt_ttl_seconds {
+            return Err(ConfigError::InvalidRefreshTtl);
+        }
 
         Ok(Self {
             jwt_secret,
             jwt_ttl_seconds,
+            refresh_ttl_seconds,
         })
     }
 }
@@ -72,6 +83,7 @@ pub enum ConfigError {
     MissingJwtSecret,
     WeakJwtSecret,
     InvalidJwtTtl,
+    InvalidRefreshTtl,
 }
 
 impl std::fmt::Display for ConfigError {
@@ -88,6 +100,9 @@ impl std::fmt::Display for ConfigError {
             }
             Self::WeakJwtSecret => formatter.write_str("JWT_SECRET must be at least 32 bytes"),
             Self::InvalidJwtTtl => formatter.write_str("JWT_TTL_SECONDS must be a valid number"),
+            Self::InvalidRefreshTtl => formatter.write_str(
+                "REFRESH_TTL_SECONDS must be a number greater than JWT_TTL_SECONDS",
+            ),
         }
     }
 }

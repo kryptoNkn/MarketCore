@@ -18,8 +18,12 @@ pub enum AppError {
     Server(io::Error),
     InvalidRequest(&'static str),
     InvalidCredentials,
+    RateLimited,
     Conflict,
     Internal,
+    InvalidCorsOrigin,
+    Unauthorized,
+    Unavailable,
 }
 
 impl std::fmt::Display for AppError {
@@ -33,8 +37,12 @@ impl std::fmt::Display for AppError {
             Self::Server(error) => write!(formatter, "server error: {error}"),
             Self::InvalidRequest(error) => write!(formatter, "invalid request: {error}"),
             Self::InvalidCredentials => formatter.write_str("invalid credentials"),
+            Self::RateLimited => formatter.write_str("too many requests"),
             Self::Conflict => formatter.write_str("resource already exists"),
             Self::Internal => formatter.write_str("internal server error"),
+            Self::InvalidCorsOrigin => formatter.write_str("CORS_ORIGIN must be a valid origin"),
+            Self::Unauthorized => formatter.write_str("unauthorized"),
+            Self::Unavailable => formatter.write_str("service unavailable"),
         }
     }
 }
@@ -66,11 +74,22 @@ impl IntoResponse for AppError {
                 "invalid_credentials",
                 "invalid credentials",
             ),
+            Self::Unauthorized => (StatusCode::UNAUTHORIZED, "unauthorized", "unauthorized"),
             Self::Conflict => (StatusCode::CONFLICT, "conflict", "resource already exists"),
             Self::Internal => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "internal",
                 "internal server error",
+            ),
+            Self::RateLimited => (
+                StatusCode::TOO_MANY_REQUESTS,
+                "rate_limited",
+                "too many requests",
+            ),
+            Self::Unavailable => (
+                StatusCode::SERVICE_UNAVAILABLE,
+                "unavailable",
+                "database unavailable",
             ),
             error => {
                 tracing::error!(error = %error, "request failed");

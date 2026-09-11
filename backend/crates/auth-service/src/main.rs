@@ -6,14 +6,16 @@ mod models;
 mod repositories;
 mod services;
 mod state;
+mod extract;
 
 use std::net::SocketAddr;
 
+use axum::http::HeaderValue;
 use app::create_router;
 use common::{AuthConfig, DatabaseConfig, ServerConfig};
 use db::{check_connection, create_pool};
 use error::AppError;
-use jsonwebtoken::EncodingKey;
+use jsonwebtoken::{DecodingKey, EncodingKey};
 use state::AppState;
 use tokio::net::TcpListener;
 use tracing::info;
@@ -39,7 +41,13 @@ async fn main() -> Result<(), AppError> {
         .map_err(AppError::Migrations)?;
     check_connection(&db).await.map_err(AppError::Database)?;
 
+    let cors_origin: HeaderValue = server_config
+        .cors_origin
+        .parse()
+        .map_err(|_| AppError::InvalidCorsOrigin)?;
+
     let encoding_key = EncodingKey::from_secret(auth_config.jwt_secret.as_bytes());
+    let decoding_key = DecodingKey::from_secret(auth_config.jwt_secret.as_bytes());
     let dummy_password_hash = services::hash_password("timing-dummy".to_owned()).await?;
 
     let listener = TcpListener::bind(address)
@@ -48,12 +56,17 @@ async fn main() -> Result<(), AppError> {
     info!(%address, "auth service listening");
     axum::serve(
         listener,
-        create_router(AppState {
-            db,
-            auth: auth_config,
-            encoding_key,
-            dummy_password_hash,
-        }),
+        create_router(
+            AppState {
+                db,
+                auth: auth_config,
+                encoding_key,
+                decoding_key,
+                dummy_password_hash,
+            },
+            cors_origin,
+        )
+        .into_make_service_with_connect_info::<SocketAddr>()
     )
     .await
     .map_err(AppError::Server)
